@@ -19,7 +19,6 @@ library
                        Data.FlatHList.Internal
                        Data.FlatRecord
   build-depends:       base >=4.8 && <5
-                     , ghc-prim >=0.4 && <0.6
                      , vector >=0.11 && <1
                      , deepseq
   hs-source-dirs:      src

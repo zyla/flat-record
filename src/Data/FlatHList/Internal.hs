@@ -15,9 +15,8 @@ import qualified Data.Vector.Mutable as VM
 import Data.Functor.Identity
 import Control.Monad.ST
 import Data.Proxy
-import GHC.Types
 import GHC.TypeLits
-import GHC.Prim (Any)
+import GHC.Exts (Any, Constraint)
 import Unsafe.Coerce (unsafeCoerce)
 import Data.FlatHList.TypeLevel
 
