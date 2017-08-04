@@ -16,6 +16,7 @@ import Data.Functor.Identity
 import Control.Monad.ST
 import Data.Proxy
 import GHC.TypeLits
+import GHC.Base (Type)
 import GHC.Exts (Any, Constraint)
 import Unsafe.Coerce (unsafeCoerce)
 import Data.FlatHList.TypeLevel
@@ -26,7 +27,7 @@ import Data.FlatHList.TypeLevel
 --   and @forall i. (0 <= i < length vector) => (vector ! i) :: ElemAt i xs@
 --
 --   In other words, types in @vector@ match @xs@.
-newtype HList (xs :: [*]) = HL (V.Vector Any)
+newtype HList (xs :: [Type]) = HL (V.Vector Any)
 
 -- | @index \@i vector@ - Get ith element from the HList.
 hindex :: Index xs a -> HList xs -> a
@@ -45,7 +46,7 @@ hindex (Index i) (HL vector) =
 -- also representing the proof that @ElemAt i xs ~ a@.
 --
 -- Can be used to access @i@th element at type @a@ of any vector of shape @xs@.
-newtype Index (xs :: [*]) (a :: *) = Index { indexValue :: Int }
+newtype Index (xs :: [k]) (a :: k) = Index { indexValue :: Int }
 
 at :: forall (i :: Nat) xs. KnownNat i => Index xs (ElemAt i xs)
 at = Index (reifyNat @i)
@@ -117,7 +118,7 @@ unsafeToAny = unsafeCoerce
 
 {-# RULES "unsafeFromAny/unsafeFromAny" forall x. unsafeFromAny (unsafeToAny x) = x #-}
 
-hcgenerate :: forall (c :: * -> Constraint) xs.
+hcgenerate :: forall (c :: Type -> Constraint) xs.
      All c xs
   => (forall a. c a => Index xs a -> a)
   -> HList xs
@@ -129,13 +130,13 @@ hcgenerate f = HL $ runST $ do
   -- TODO: Safety proof
 {-# INLINE hcgenerate #-}
 
-hcpure :: forall (c :: * -> Constraint) xs.
+hcpure :: forall (c :: Type -> Constraint) xs.
    ( All c xs )
   => (forall a. c a => a)
   -> HList xs
 hcpure value = hcgenerate @c (\_ -> value)
 
-class KnownNat (Length xs) => All (c :: * -> Constraint) xs where
+class KnownNat (Length xs) => All (c :: Type -> Constraint) xs where
   ctraverse_off :: forall f r.
        Applicative f
     => Int -- ^ offset
@@ -164,7 +165,7 @@ class IsF f x where
 instance x ~ f a => IsF f x where
   prf_isF = id
 
-hcToList :: forall (c :: * -> Constraint) xs r.
+hcToList :: forall (c :: Type -> Constraint) xs r.
      All c xs
   => (forall a. c a => a -> r)
   -> HList xs
@@ -215,7 +216,7 @@ hcast :: forall (is :: [Nat]) xs ys.
 hcast = hindexes @is
 {-# INLINE hcast #-}
 
-hcToList2 :: forall (c :: * -> Constraint) xs r.
+hcToList2 :: forall (c :: Type -> Constraint) xs r.
      All c xs
   => (forall a. c a => a -> a -> r)
   -> HList xs
@@ -226,7 +227,7 @@ hcToList2 f xs ys =
     pure $ f (hindex index xs) (hindex index ys)
   -- TODO: Safety proof
 
-hczipWith :: forall (c :: * -> Constraint) xs.
+hczipWith :: forall (c :: Type -> Constraint) xs.
      All c xs
   => (forall a. c a => a -> a -> a)
   -> HList xs
@@ -244,7 +245,7 @@ type family ElemAt index xs where
   ElemAt 0 (x : xs) = x
   ElemAt n (x : xs) = ElemAt (n - 1) xs
 
-type family ElemsAt (is :: [Nat]) (xs :: [*]) :: [*] where
+type family ElemsAt (is :: [Nat]) (xs :: [k]) :: [k] where
   ElemsAt '[] xs = '[]
   ElemsAt (i : is) xs = ElemAt i xs : ElemsAt is xs
 

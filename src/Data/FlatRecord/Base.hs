@@ -13,11 +13,12 @@
 {-# LANGUAGE StandaloneDeriving #-}
 module Data.FlatRecord.Base where
 
+import GHC.Base (Type)
 import GHC.TypeLits
 import Data.FlatHList
 import GHC.OverloadedLabels
 
-newtype (label :: Symbol) :-> (a :: *) = Val { unVal :: a }
+newtype (label :: Symbol) :-> (a :: Type) = Val { unVal :: a }
   deriving (Eq, Enum, Bounded, Monoid)
 
 instance (KnownSymbol label, Show a) => Show (label :-> a) where
