@@ -29,18 +29,30 @@ import Data.FlatHList.TypeLevel
 newtype HList (xs :: [*]) = HL (V.Vector Any)
 
 -- | @index \@i vector@ - Get ith element from the HList.
-hindex :: forall (i :: Nat) xs. KnownNat i => HList xs -> ElemAt i xs
-hindex (HL vector) =
-  unsafeFromAny (vector ! reifyNat @i)
+hindex :: Index xs a -> HList xs -> a
+hindex (Index i) (HL vector) =
+  unsafeFromAny (vector ! i)
   -- Safety proof:
   --
-  -- Theorem: @(vector ! i) :: ElemAt i xs@
+  -- Theorem: @(vector ! i) :: a@
   --
-  -- Follows directly from invariant for @HList xs@.
+  -- TODO
 {-# INLINE hindex #-}
 
+-- | @Index i :: Index xs a@
+--
+-- An index into the type level list of types @xs@,
+-- also representing the proof that @ElemAt i xs ~ a@.
+--
+-- Can be used to access @i@th element at type @a@ of any vector of shape @xs@.
+newtype Index (xs :: [*]) (a :: *) = Index { indexValue :: Int }
+
+at :: forall (i :: Nat) xs. KnownNat i => Index xs (ElemAt i xs)
+at = Index (reifyNat @i)
+  -- TODO: Safety proof
+
 hget :: forall a i xs. (i ~ IndexOf a xs, ElemAt i xs ~ a, KnownNat i) => HList xs -> a
-hget = hindex @i
+hget = hindex (at @i)
 {-# INLINE hget #-}
 
 reifyNat :: forall i. KnownNat i => Int
@@ -105,22 +117,29 @@ unsafeToAny = unsafeCoerce
 
 {-# RULES "unsafeFromAny/unsafeFromAny" forall x. unsafeFromAny (unsafeToAny x) = x #-}
 
+hcgenerate :: forall (c :: * -> Constraint) xs.
+     All c xs
+  => (forall a. c a => Index xs a -> a)
+  -> HList xs
+hcgenerate f = HL $ runST $ do
+  mvector <- VM.new (reifyNat @(Length xs))
+  _ :: [()] <- ctraverse_off @c @xs 0 $ \index ->
+    VM.write mvector (indexValue index) (unsafeToAny (f index))
+  V.unsafeFreeze mvector
+  -- TODO: Safety proof
+{-# INLINE hcgenerate #-}
+
 hcpure :: forall (c :: * -> Constraint) xs.
    ( All c xs )
   => (forall a. c a => a)
   -> HList xs
-hcpure value = HL $ runST $ do
-  mvector <- VM.new (reifyNat @(Length xs))
-  _ :: [()] <- ctraverse_off @c @xs 0 (\(_ :: Proxy (a :: *)) index ->
-    VM.write mvector index (unsafeToAny (value :: a)))
-  V.unsafeFreeze mvector
-  -- TODO: Safety proof
+hcpure value = hcgenerate @c (\_ -> value)
 
 class KnownNat (Length xs) => All (c :: * -> Constraint) xs where
   ctraverse_off :: forall f r.
        Applicative f
     => Int -- ^ offset
-    -> (forall a. c a => Proxy a -> Int -> f r)
+    -> (forall a. c a => Index xs a -> f r)
     -> f [r]
 
 instance All c '[] where
@@ -128,7 +147,15 @@ instance All c '[] where
   {-# INLINE ctraverse_off #-}
 
 instance (c x, All c xs, KnownNat (1 + Length xs)) => All c (x : xs) where
-  ctraverse_off off f = (:) <$> f (Proxy @x) off <*> ctraverse_off @c @xs (off + 1) f
+  ctraverse_off off f =
+    (:) <$> f @x (Index off)
+        <*> ctraverse_off @c @xs (off + 1) (shiftIndex f)
+                                              -- TODO: Safety proof
+    where
+      shiftIndex :: forall b r. c b =>
+                    (forall a. c a => Index (x : xs) a -> r)
+                 -> Index xs b -> r
+      shiftIndex f (Index index) = f @b (Index index)
   {-# INLINE ctraverse_off #-}
 
 class IsF f x where
@@ -142,9 +169,9 @@ hcToList :: forall (c :: * -> Constraint) xs r.
   => (forall a. c a => a -> r)
   -> HList xs
   -> [r]
-hcToList f (HL vector) =
-  runIdentity $ ctraverse_off @c @xs 0
-    (\(_ :: Proxy a) index -> Identity (f @a (unsafeFromAny (vector ! index))))
+hcToList f xs =
+  runIdentity $ ctraverse_off @c @xs 0 $ \index ->
+    pure $ f (hindex index xs)
   -- TODO: Safety proof
 
 instance All Show xs => Show (HList xs) where
@@ -194,12 +221,9 @@ hcToList2 :: forall (c :: * -> Constraint) xs r.
   -> HList xs
   -> HList xs
   -> [r]
-hcToList2 f (HL v1) (HL v2) =
-  runIdentity $ ctraverse_off @c @xs 0 $
-    \(_ :: Proxy a) index ->
-      Identity $
-        f @a (unsafeFromAny (v1 ! index))
-             (unsafeFromAny (v2 ! index))
+hcToList2 f xs ys =
+  runIdentity $ ctraverse_off @c @xs 0 $ \index ->
+    pure $ f (hindex index xs) (hindex index ys)
   -- TODO: Safety proof
 
 hczipWith :: forall (c :: * -> Constraint) xs.
@@ -208,15 +232,9 @@ hczipWith :: forall (c :: * -> Constraint) xs.
   -> HList xs
   -> HList xs
   -> HList xs
-hczipWith f (HL v1) (HL v2) = HL $ runST $ do
-  mvector <- VM.new (reifyNat @(Length xs))
-  _ :: [()] <- ctraverse_off @c @xs 0 $ \(_ :: Proxy a) index ->
-    VM.write mvector index $
-      unsafeToAny $
-        f @a (unsafeFromAny (v1 ! index))
-             (unsafeFromAny (v2 ! index))
-  V.unsafeFreeze mvector
-  -- TODO: Safety proof
+hczipWith f xs ys = 
+  hcgenerate @c $ \index ->
+    f (hindex index xs) (hindex index ys)
 {-# INLINE hczipWith #-}
 
 -- | @ElemAt i xs@ ith element of xs.
