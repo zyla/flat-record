@@ -168,7 +168,7 @@ hindexes :: forall (is :: [Nat]) xs.
 hindexes (HL source) = HL $ runST $ do
   target <- VM.new (reifyNat @(Length is))
   traverseNatsI_ @is 0 $ \targetIndex sourceIndex ->
-    VM.write target targetIndex (source ! sourceIndex)
+    VM.write target targetIndex (V.unsafeIndex source sourceIndex)
   V.unsafeFreeze target
   -- TODO: Safety proof
 {-# INLINE hindexes #-}
