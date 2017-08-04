@@ -23,23 +23,23 @@ import Data.FlatHList.TypeLevel
 -- INVARIANT (in pseudo-dependent Haskell):
 --   if @HL vector :: HList xs@
 --   then @length vector = Length xs@
---   and @forall i. (0 <= i < length vector) => (vector ! i) :: Index i xs@
+--   and @forall i. (0 <= i < length vector) => (vector ! i) :: ElemAt i xs@
 --
 --   In other words, types in @vector@ match @xs@.
 newtype HList (xs :: [*]) = HL (V.Vector Any)
 
 -- | @index \@i vector@ - Get ith element from the HList.
-hindex :: forall (i :: Nat) xs. KnownNat i => HList xs -> Index i xs
+hindex :: forall (i :: Nat) xs. KnownNat i => HList xs -> ElemAt i xs
 hindex (HL vector) =
   unsafeFromAny (vector ! reifyNat @i)
   -- Safety proof:
   --
-  -- Theorem: @(vector ! i) :: Index i xs@
+  -- Theorem: @(vector ! i) :: ElemAt i xs@
   --
   -- Follows directly from invariant for @HList xs@.
 {-# INLINE hindex #-}
 
-hget :: forall a i xs. (i ~ IndexOf a xs, Index i xs ~ a, KnownNat i) => HList xs -> a
+hget :: forall a i xs. (i ~ IndexOf a xs, ElemAt i xs ~ a, KnownNat i) => HList xs -> a
 hget = hindex @i
 {-# INLINE hget #-}
 
@@ -56,13 +56,13 @@ hsingleton x =
   --
   -- Theorem (invariant for @HList '[a]@):
   --   @forall i. (0 <= i < length (V.singleton x)) =>
-  --      (V.singleton x ! i) :: Index i '[a]@
+  --      (V.singleton x ! i) :: ElemAt i '[a]@
   --
   -- There is only one valid index: 0.
   -- @(V.singleton x ! 0) = x@  -- from properties of singleton
-  -- @a ~ Index 0 '[a]@         -- trivial
+  -- @a ~ ElemAt 0 '[a]@         -- trivial
   -- therefore
-  -- @(V.singleton x ! 0) :: Index 0 '[a]@
+  -- @(V.singleton x ! 0) :: ElemAt 0 '[a]@
 {-# INLINE hsingleton #-}
 
 happend :: HList xs -> HList ys -> HList (xs ++ ys)
@@ -72,24 +72,24 @@ happend (HL v1) (HL v2) =
   --
   -- Theorem (invariant for @HList (xs ++ ys)@):
   --   @forall i. (0 <= i < length (v1 <> v2)) =>
-  --      ((v1 <> v2) ! i) :: Index i (xs ++ ys)@
+  --      ((v1 <> v2) ! i) :: ElemAt i (xs ++ ys)@
   --
   -- Case 1: i < length v1
   --   @(v1 <> v2) ! i     = v1 ! i@      -- from properties of (<>)
-  --   @Index i (xs ++ ys) ~ Index i xs@  -- from properties of (++)
+  --   @ElemAt i (xs ++ ys) ~ ElemAt i xs@  -- from properties of (++)
   --
   --   It remains to prove
-  --   @(v1 ! i) :: Index i xs@
+  --   @(v1 ! i) :: ElemAt i xs@
   --   which follows from invariant for @HList xs@.
   --
   -- Case 1: i >= length v1
   --   @(v1 <> v2) ! i     = v2 ! (i - length v1)@
   --       -- from properties of (<>)
-  --   @Index i (xs ++ ys) ~ Index (i - Length xs) ys@
+  --   @ElemAt i (xs ++ ys) ~ ElemAt (i - Length xs) ys@
   --       -- from properties of (++)
   --
   --   It remains to prove
-  --   @(v2 ! (i - length v1)) :: Index (i - length v1) ys@
+  --   @(v2 ! (i - length v1)) :: ElemAt (i - length v1) ys@
   --   Since @i - length v1 < length v2@,
   --   this follows from invariant for @HList ys@.
   --
@@ -163,7 +163,7 @@ instance All NFData xs => NFData (HList xs) where
 hindexes :: forall (is :: [Nat]) xs.
    ( ReifyNats is, KnownNat (Length is) )
   => HList xs
-  -> HList (Indexes is xs)
+  -> HList (ElemsAt is xs)
 hindexes (HL source) = HL $ runST $ do
   target <- VM.new (reifyNat @(Length is))
   traverseNatsI_ @is 0 $ \targetIndex sourceIndex ->
@@ -182,7 +182,7 @@ seqList [] = []
 seqList (x : xs) = let rest = seqList xs in x `seq` rest `seq` (x : rest)
 
 hcast :: forall (is :: [Nat]) xs ys.
-   ( is ~ IndexesOf xs ys, Indexes is xs ~ ys, ReifyNats is, KnownNat (Length is) )
+   ( is ~ IndexesOf xs ys, ElemsAt is xs ~ ys, ReifyNats is, KnownNat (Length is) )
   => HList xs
   -> HList ys
 hcast = hindexes @is
@@ -219,16 +219,16 @@ hczipWith f (HL v1) (HL v2) = HL $ runST $ do
   -- TODO: Safety proof
 {-# INLINE hczipWith #-}
 
--- | @Index i xs@ ith element of xs.
+-- | @ElemAt i xs@ ith element of xs.
 --
 -- Stuck if i is out of bounds.
-type family Index index xs where
-  Index 0 (x : xs) = x
-  Index n (x : xs) = Index (n - 1) xs
+type family ElemAt index xs where
+  ElemAt 0 (x : xs) = x
+  ElemAt n (x : xs) = ElemAt (n - 1) xs
 
-type family Indexes (is :: [Nat]) (xs :: [*]) :: [*] where
-  Indexes '[] xs = '[]
-  Indexes (i : is) xs = Index i xs : Indexes is xs
+type family ElemsAt (is :: [Nat]) (xs :: [*]) :: [*] where
+  ElemsAt '[] xs = '[]
+  ElemsAt (i : is) xs = ElemAt i xs : ElemsAt is xs
 
 type family IndexOf a xs where
   IndexOf a (a : xs) = 0
