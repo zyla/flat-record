@@ -209,11 +209,16 @@ seqList :: [a] -> [a]
 seqList [] = []
 seqList (x : xs) = let rest = seqList xs in x `seq` rest `seq` (x : rest)
 
-hcast :: forall (is :: [Nat]) xs ys.
-   ( is ~ IndexesOf xs ys, ElemsAt is xs ~ ys, ReifyNats is, KnownNat (Length is) )
+type Subset ys xs =
+   ( ElemsAt (IndexesOf xs ys) xs ~ ys
+   , ReifyNats (IndexesOf xs ys)
+   , KnownNat (Length (IndexesOf xs ys)) )
+
+hcast :: forall xs ys.
+     Subset ys xs
   => HList xs
   -> HList ys
-hcast = hindexes @is
+hcast = hindexes @(IndexesOf xs ys)
 {-# INLINE hcast #-}
 
 hcToList2 :: forall (c :: Type -> Constraint) xs r.

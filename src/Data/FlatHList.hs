@@ -4,6 +4,7 @@ module Data.FlatHList (
   , hindex
   , hget
   , hindexes
+  , at
   , hcast
   , hseq
   , hsingleton
@@ -13,6 +14,10 @@ module Data.FlatHList (
   , hcToList
   , All -- methods not exported
   , module Data.FlatHList.TypeLevel
+
+  -- * type level stuff
+  , ElemAt
+  , Subset
 ) where
 
 import Data.FlatHList.Internal
