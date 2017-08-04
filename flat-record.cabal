@@ -1,0 +1,66 @@
+name:                flat-record
+version:             0.1.0.0
+-- synopsis:            
+-- description:         
+license:             BSD3
+license-file:        LICENSE
+author:              Maciej Bielecki
+maintainer:          zyla@prati.pl
+-- copyright:           
+category:            Data
+build-type:          Simple
+extra-source-files:  ChangeLog.md
+cabal-version:       >=1.10
+tested-with:         GHC==8.2.1, GHC==8.0.2
+
+library
+  exposed-modules:     Data.FlatHList
+                       Data.FlatHList.TypeLevel
+                       Data.FlatHList.Internal
+                       Data.FlatRecord
+  build-depends:       base >=4.8 && <5
+                     , ghc-prim >=0.4 && <0.6
+                     , vector >=0.11 && <1
+                     , deepseq
+  hs-source-dirs:      src
+  default-language:    Haskell2010
+
+benchmark largerecord
+  type:             exitcode-stdio-1.0
+  hs-source-dirs:   bench
+  main-is:          LargeRecord.hs
+  build-depends:    base >= 4.7 && <= 5, criterion, flat-record, vinyl
+  ghc-options:      -O2
+  default-language: Haskell2010
+
+benchmark cast
+  type:             exitcode-stdio-1.0
+  hs-source-dirs:   bench
+  main-is:          Cast.hs
+  build-depends:    base >= 4.7 && <= 5, criterion, flat-record, vinyl, deepseq
+  ghc-options:      -O2
+  default-language: Haskell2010
+
+benchmark cast2
+  type:             exitcode-stdio-1.0
+  hs-source-dirs:   bench
+  main-is:          Cast2.hs
+  build-depends:    base >= 4.7 && <= 5, criterion, flat-record, vinyl, deepseq
+  ghc-options:      -O2
+  default-language: Haskell2010
+
+benchmark cast3
+  type:             exitcode-stdio-1.0
+  hs-source-dirs:   bench
+  main-is:          Cast3.hs
+  build-depends:    base >= 4.7 && <= 5, criterion, flat-record
+  ghc-options:      -O2
+  default-language: Haskell2010
+
+test-suite spec
+  type:             exitcode-stdio-1.0
+  hs-source-dirs:   test
+  main-is:          Spec.hs
+  build-depends:    base >= 4.7 && <= 5, flat-record, hspec
+  ghc-options:      -O2
+  default-language: Haskell2010
