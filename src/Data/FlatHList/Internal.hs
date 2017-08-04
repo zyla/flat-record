@@ -162,13 +162,14 @@ instance All NFData xs => NFData (HList xs) where
   rnf = rnf . hcToList @NFData rnf
 
 hindexes :: forall (is :: [Nat]) xs.
-     ReifyNats is
+   ( ReifyNats is, KnownNat (Length is) )
   => HList xs
   -> HList (Indexes is xs)
-hindexes (HL vector) = HL $
-  V.fromList $
-  map (vector !) $
-  reifyNats @is
+hindexes (HL source) = HL $ runST $ do
+  target <- VM.new (reifyNat @(Length is))
+  traverseNatsI_ @is 0 $ \targetIndex sourceIndex ->
+    VM.write target targetIndex (source ! sourceIndex)
+  V.unsafeFreeze target
   -- TODO: Safety proof
 {-# INLINE hindexes #-}
 
@@ -182,7 +183,7 @@ seqList [] = []
 seqList (x : xs) = let rest = seqList xs in x `seq` rest `seq` (x : rest)
 
 hcast :: forall (is :: [Nat]) xs ys.
-   ( is ~ IndexesOf xs ys, Indexes is xs ~ ys, ReifyNats is )
+   ( is ~ IndexesOf xs ys, Indexes is xs ~ ys, ReifyNats is, KnownNat (Length is) )
   => HList xs
   -> HList ys
 hcast = hindexes @is
@@ -243,10 +244,12 @@ type family Length xs where
   Length (x : xs) = 1 + Length xs
 
 class ReifyNats (is :: [Nat]) where
-  reifyNats :: [Int]
+  traverseNatsI_ :: Applicative m => Int -> (Int -> Int -> m ()) -> m ()
 
 instance ReifyNats '[] where
-  reifyNats = []
+  traverseNatsI_ _ _ = pure ()
+  {-# INLINE traverseNatsI_ #-}
 
 instance (KnownNat x, ReifyNats xs) => ReifyNats (x : xs) where
-  reifyNats = reifyNat @x : reifyNats @xs
+  traverseNatsI_ index f = f index (reifyNat @x) *> traverseNatsI_ @xs (index + 1) f
+  {-# INLINE traverseNatsI_ #-}
