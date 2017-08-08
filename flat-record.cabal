@@ -85,3 +85,4 @@ test-suite spec
     HList.BaseSpec
     Record.CastSpec
     Record.JsonSpec
+    Record.GenerateSpec

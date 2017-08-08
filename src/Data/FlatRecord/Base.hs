@@ -17,6 +17,7 @@
 {-# LANGUAGE ConstraintKinds #-}
 module Data.FlatRecord.Base where
 
+import Data.Proxy
 import GHC.Base (Type)
 import GHC.TypeLits
 import Data.FlatHList
@@ -81,3 +82,20 @@ get = unVal . hindex (at @(IndexOfLabel label rs)) . unRecord
 
 rcast :: Subset ys xs => Record xs -> Record ys
 rcast (Record xs) = Record (hcast xs)
+
+newtype RIndex rs label a = RIndex { unRIndex :: Index rs (label :-> a) }
+
+class LiftC c field where
+  liftC :: (forall label a. (field ~ (label :-> a), KnownSymbol label, c a) =>
+            Proxy (label :-> a) -> r) -> r
+
+instance (KnownSymbol label, c a) => LiftC c (label :-> a) where
+  liftC f = f Proxy
+
+type RAll c = All (LiftC c)
+
+rcgenerate :: forall c rs. RAll c rs => (forall label a. c a => RIndex rs label a -> a) -> Record rs
+rcgenerate f = Record $ hcgenerate @(LiftC c)
+  $ \(index :: Index rs field) ->
+    liftC @c @field $ \(_ :: Proxy (label :-> a)) ->
+      Val $ f @label @a (RIndex index)

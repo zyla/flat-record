@@ -1,6 +1,7 @@
 module Data.FlatHList (
     HList -- constructor not exported
   , hnil
+  , Index
   , hindex
   , hget
   , hindexes
@@ -14,6 +15,8 @@ module Data.FlatHList (
   , hcToList
   , All -- methods not exported
   , module Data.FlatHList.TypeLevel
+
+  , hcgenerate
 
   -- * type level stuff
   , ElemAt
