@@ -20,7 +20,9 @@ module Data.FlatRecord.Base where
 import Data.Proxy
 import GHC.Base (Type)
 import GHC.TypeLits
+import Data.Functor.Identity
 import Data.FlatHList
+import Data.FlatHList.Internal (Index(Index))
 import GHC.OverloadedLabels
 
 type Field = Type
@@ -50,6 +52,9 @@ infixr 5 <+>
 
 rnil :: Record '[]
 rnil = Record hnil
+
+rcons :: x -> Record xs -> Record ((label :-> x) : xs)
+rcons x (Record xs) = Record (Val x `hcons` xs)
 
 -- | A singleton for record labels.
 data Label (label :: Symbol) where
@@ -130,6 +135,26 @@ rcgenerate2 f = Record $ hcgenerate2 @(LiftC2 c)
     liftC2 @c @xfield @yfield
       $ \(_ :: Proxy (label :-> a)) (_ :: Proxy (label :-> b)) ->
         Val $ f @label @a @b (RIndex xindex) (RIndex yindex)
+
+class RCGenerate2A c rs ss where
+  rcgenerate2A ::
+       Applicative f
+    => (forall label a b. c a b => RIndex rs label a -> RIndex ss label b -> f b)
+    -> f (Record ss)
+
+instance (c x y, RCGenerate2A c xs ys)
+    => RCGenerate2A c ((label :-> x) : xs) ((label :-> y) : ys) where
+  rcgenerate2A f =
+    rcons
+      <$> f (RIndex (at @0)) (RIndex (at @0))
+      <*> rcgenerate2A @c @xs @ys (\i1 i2 -> f (shiftIndex i1) (shiftIndex i2))
+
+    where
+      shiftIndex :: forall xs label field a. RIndex xs label a -> RIndex (field : xs) label a
+      shiftIndex (RIndex (Index index)) = RIndex (Index (index + 1))
+
+instance RCGenerate2A c '[] '[] where
+  rcgenerate2A _ = pure rnil
 
 rcmap :: forall c rs ss.
      RAll2 c rs ss
