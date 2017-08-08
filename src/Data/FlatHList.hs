@@ -11,12 +11,17 @@ module Data.FlatHList (
   , hsingleton
   , happend
   , hcpure
+  , hcons
+  , hnil
   , IsF(..)
   , hcToList
   , All -- methods not exported
   , module Data.FlatHList.TypeLevel
 
   , hcgenerate
+
+  , All2
+  , hcgenerate2
 
   -- * type level stuff
   , ElemAt

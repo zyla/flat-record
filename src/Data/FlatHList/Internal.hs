@@ -130,6 +130,41 @@ hcgenerate f = HL $ runST $ do
   -- TODO: Safety proof
 {-# INLINE hcgenerate #-}
 
+class KnownNat (Length xs) => All2 (c :: Type -> Type -> Constraint) xs ys where
+  ctraverse2_off :: forall f r.
+       Applicative f
+    => Int -- ^ offset
+    -> (forall a b. c a b => Index xs a -> Index ys b -> f r)
+    -> f [r]
+
+instance All2 c '[] '[] where
+  ctraverse2_off _ _ = pure []
+  {-# INLINE ctraverse2_off #-}
+
+instance (c x y, All2 c xs ys, KnownNat (1 + Length xs)) => All2 c (x : xs) (y : ys) where
+  ctraverse2_off off f =
+    (:) <$> f @x @y (Index off) (Index off)
+        <*> ctraverse2_off @c @xs @ys (off + 1) (shiftIndex f)
+                                              -- TODO: Safety proof
+    where
+      shiftIndex :: forall a1 b1 r. c a1 b1 =>
+                    (forall a b. c a b => Index (x : xs) a -> Index (y : ys) b -> r)
+                 -> Index xs a1 -> Index ys b1 -> r
+      shiftIndex f (Index xindex) (Index yindex) = f @a1 @b1 (Index xindex) (Index yindex)
+  {-# INLINE ctraverse2_off #-}
+
+hcgenerate2 :: forall (c :: Type -> Type -> Constraint) xs ys.
+   ( All2 c xs ys )
+  => (forall a b. c a b => Index xs a -> Index ys b -> b)
+  -> HList ys
+hcgenerate2 f = HL $ runST $ do
+  mvector <- VM.new (reifyNat @(Length xs))
+  _ :: [()] <- ctraverse2_off @c @xs @ys 0 $ \xindex yindex ->
+    VM.write mvector (indexValue yindex) (unsafeToAny (f xindex yindex))
+  V.unsafeFreeze mvector
+  -- TODO: Safety proof
+{-# INLINE hcgenerate2 #-}
+
 hcpure :: forall (c :: Type -> Constraint) xs.
    ( All c xs )
   => (forall a. c a => a)
@@ -276,3 +311,8 @@ instance ReifyNats '[] where
 instance (KnownNat x, ReifyNats xs) => ReifyNats (x : xs) where
   traverseNatsI_ index f = f index (reifyNat @x) *> traverseNatsI_ @xs (index + 1) f
   {-# INLINE traverseNatsI_ #-}
+
+hcons :: x -> HList xs -> HList (x : xs)
+hcons x xs = hsingleton x `happend` xs
+
+infixr 5 `hcons`
