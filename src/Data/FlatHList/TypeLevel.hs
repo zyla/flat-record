@@ -16,4 +16,4 @@ type family (xs :: [k]) ++ (ys :: [k]) :: [k] where
 -- Stuck if i is out of bounds.
 type family SetAt (index :: Nat) (x :: k) (xs :: [k]) where
   SetAt 0 x (y : xs) = x : xs
-  SetAt n x (y : xs) = SetAt (n - 1) x xs
+  SetAt n x (y : xs) = y : SetAt (n - 1) x xs

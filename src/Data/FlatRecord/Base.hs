@@ -167,7 +167,7 @@ rcmap :: forall c rs ss.
 rcmap f rs = rcgenerate2 @c @rs (\i _ -> f (rindex i rs))
 
 type RPut label a b rs ss =
-  ( a ~ ElemAt (IndexOfLabel label rs) rs
+  ( (label :-> a) ~ ElemAt (IndexOfLabel label rs) rs
   , SetAt (IndexOfLabel label rs) (label :-> b) rs ~ ss
   , KnownNat (IndexOfLabel label rs) )
 

@@ -39,7 +39,11 @@ rcmapSpec =
     rcmap @ToMaybe Just (#foo =: 1 <+> #bar =: True)
       `shouldBe` (#foo =: Just 1 <+> #bar =: Just True)
 
-rputSpec =
+rputSpec = do
   it "rput" $ do
     rput @"foo" 'A' (#foo =: "x" <+> #bar =: False)
       `shouldBe` (#foo =: 'A' <+> #bar =: False)
+
+  it "rput two times" $ do
+    rput @"foo" 'A' (rput @"bar" True (#foo =: "x" <+> #bar =: False))
+      `shouldBe` (#foo =: 'A' <+> #bar =: True)
