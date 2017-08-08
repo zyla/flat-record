@@ -12,6 +12,7 @@ module Data.FlatHList (
   , happend
   , hcpure
   , hcons
+  , huncons
   , IsF(..)
   , hcToList
   , All -- methods not exported

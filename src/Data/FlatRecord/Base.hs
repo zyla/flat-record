@@ -56,6 +56,9 @@ rnil = Record hnil
 rcons :: x -> Record xs -> Record ((label :-> x) : xs)
 rcons x (Record xs) = Record (Val x `hcons` xs)
 
+runcons :: Record ((label :-> x) : xs) -> (x, Record xs)
+runcons (Record xs) = case huncons xs of (Val x, xs') -> (x, Record xs')
+
 -- | A singleton for record labels.
 data Label (label :: Symbol) where
   Label :: KnownSymbol label => Label label

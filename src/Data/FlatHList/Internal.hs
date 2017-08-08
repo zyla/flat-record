@@ -62,6 +62,10 @@ reifyNat = fromIntegral (natVal (Proxy @i))
 hnil :: HList '[]
 hnil = HL V.empty
 
+huncons :: HList (x : xs) -> (x, HList xs)
+huncons xs@(HL vector) = (hindex (at @0) xs, HL (V.tail vector))
+  -- TODO: Safety proof
+
 hsingleton :: a -> HList '[a]
 hsingleton x =
   HL (V.singleton (unsafeToAny x))
