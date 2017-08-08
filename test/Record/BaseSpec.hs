@@ -15,6 +15,7 @@ spec = do
     show (#foo =: ()) `shouldBe` "[foo :-> ()]"
 
   rcgenerate2Spec
+  rcmapSpec
 
 type Fields = '["foo" :-> Int, "bar" :-> Bool]
 type FieldsMaybe = '["foo" :-> Maybe Int, "bar" :-> Maybe Bool]
@@ -31,3 +32,8 @@ rcgenerate2Spec =
         ys = rcgenerate2 @ToMaybe @Fields (\i _ -> Just (rindex i xs))
 
     ys `shouldBe` (#foo =: Just 1 <+> #bar =: Just True)
+
+rcmapSpec =
+  it "works" $ do
+    rcmap @ToMaybe Just (#foo =: 1 <+> #bar =: True)
+      `shouldBe` (#foo =: Just 1 <+> #bar =: Just True)

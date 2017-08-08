@@ -130,3 +130,10 @@ rcgenerate2 f = Record $ hcgenerate2 @(LiftC2 c)
     liftC2 @c @xfield @yfield
       $ \(_ :: Proxy (label :-> a)) (_ :: Proxy (label :-> b)) ->
         Val $ f @label @a @b (RIndex xindex) (RIndex yindex)
+
+rcmap :: forall c rs ss.
+     RAll2 c rs ss
+  => (forall a b. c a b => a -> b)
+  -> Record rs
+  -> Record ss
+rcmap f rs = rcgenerate2 @c @rs (\i _ -> f (rindex i rs))
