@@ -34,8 +34,10 @@ instance (KnownSymbol label, Show a) => Show (label :-> a) where
 newtype Record xs = Record { unRecord :: HList xs }
 
 deriving instance All Eq xs => Eq (Record xs)
-deriving instance All Show xs => Show (Record xs)
 deriving instance All Monoid xs => Monoid (Record xs)
+
+instance All Show xs => Show (Record xs) where
+  show (Record xs) = show xs
 
 (=:) :: forall label a. Label label -> a -> Record '[label :-> a]
 Label =: value = Record (hsingleton (Val value))
