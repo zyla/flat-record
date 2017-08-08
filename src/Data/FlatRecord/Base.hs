@@ -165,3 +165,13 @@ rcmap :: forall c rs ss.
   -> Record rs
   -> Record ss
 rcmap f rs = rcgenerate2 @c @rs (\i _ -> f (rindex i rs))
+
+type RPut label a b rs ss =
+  ( a ~ ElemAt (IndexOfLabel label rs) rs
+  , SetAt (IndexOfLabel label rs) (label :-> b) rs ~ ss
+  , KnownNat (IndexOfLabel label rs) )
+
+rput :: forall label a b rs ss.
+     RPut label a b rs ss
+  => b -> Record rs -> Record ss
+rput x (Record xs) = Record (hset @(IndexOfLabel label rs) (Val @label x) xs)

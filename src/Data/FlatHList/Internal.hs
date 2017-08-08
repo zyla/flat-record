@@ -52,6 +52,12 @@ at :: forall (i :: Nat) xs. KnownNat i => Index xs (ElemAt i xs)
 at = Index (reifyNat @i)
   -- TODO: Safety proof
 
+hset :: forall i b xs. KnownNat i => b -> HList xs -> HList (SetAt i b xs)
+hset b (HL vector) = HL $
+  V.modify (\mvector -> VM.write mvector (reifyNat @i) (unsafeToAny b)) vector
+  -- TODO: Safety proof
+{-# INLINE hset #-}
+
 hget :: forall a i xs. (i ~ IndexOf a xs, ElemAt i xs ~ a, KnownNat i) => HList xs -> a
 hget = hindex (at @i)
 {-# INLINE hget #-}

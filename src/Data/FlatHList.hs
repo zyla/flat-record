@@ -8,6 +8,7 @@ module Data.FlatHList (
   , at
   , hcast
   , hseq
+  , hset
   , hsingleton
   , happend
   , hcpure
