@@ -82,6 +82,9 @@ type HasLabel (label :: Symbol) (a :: Type) (rs :: [Field]) =
 get :: forall label a rs. HasLabel label a rs => Record rs -> a
 get = unVal . hindex (at @(IndexOfLabel label rs)) . unRecord
 
+rindex :: RIndex rs label a -> Record rs -> a
+rindex (RIndex i) (Record xs) = unVal (hindex i xs)
+
 rcast :: Subset ys xs => Record xs -> Record ys
 rcast (Record xs) = Record (hcast xs)
 
@@ -101,3 +104,29 @@ rcgenerate f = Record $ hcgenerate @(LiftC c)
   $ \(index :: Index rs field) ->
     liftC @c @field $ \(_ :: Proxy (label :-> a)) ->
       Val $ f @label @a (RIndex index)
+
+class LiftC2 c field_a field_b where
+  liftC2 :: (forall label a b.
+              ( field_a ~ (label :-> a)
+              , field_b ~ (label :-> b)
+              , KnownSymbol label
+              , c a b )
+            => Proxy (label :-> a)
+            -> Proxy (label :-> b)
+            -> r)
+        -> r
+
+instance (KnownSymbol label, c a b) => LiftC2 c (label :-> a) (label :-> b) where
+  liftC2 f = f Proxy Proxy
+
+type RAll2 c = All2 (LiftC2 c)
+
+rcgenerate2 :: forall c rs ss.
+     RAll2 c rs ss
+  => (forall label a b. c a b => RIndex rs label a -> RIndex ss label b -> b)
+  -> Record ss
+rcgenerate2 f = Record $ hcgenerate2 @(LiftC2 c)
+  $ \(xindex :: Index rs xfield) (yindex :: Index ss yfield) ->
+    liftC2 @c @xfield @yfield
+      $ \(_ :: Proxy (label :-> a)) (_ :: Proxy (label :-> b)) ->
+        Val $ f @label @a @b (RIndex xindex) (RIndex yindex)
