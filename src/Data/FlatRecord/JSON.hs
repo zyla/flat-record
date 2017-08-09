@@ -3,8 +3,15 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE DataKinds #-}
 
-module Data.FlatRecord.JSON (recordToJSON, RecordToJSON) where
+module Data.FlatRecord.JSON (
+    recordToJSON
+  , RecordToJSON
+  , recordParseJSON
+  , RecordFromJSON
+) where
 
 import qualified Data.Text as T
 import Data.Proxy
@@ -25,3 +32,19 @@ class ToJSONField a where
 
 instance (KnownSymbol label, ToJSON a) => ToJSONField (label :-> a) where
   toJSONField (Val x) = T.pack (symbolVal (Proxy @label)) .= x
+
+class RecordFromJSON rs where
+  parseRecordFromObject :: Object -> Parser (Record rs)
+
+instance RecordFromJSON '[] where
+  parseRecordFromObject _ = pure rnil
+
+instance (KnownSymbol label, FromJSON a, RecordFromJSON rs)
+    => RecordFromJSON ((label :-> a) : rs) where
+  parseRecordFromObject object =
+    rcons
+      <$> object .: T.pack (symbolVal (Proxy @label))
+      <*> parseRecordFromObject object
+
+recordParseJSON :: RecordFromJSON rs => Value -> Parser (Record rs)
+recordParseJSON = withObject "Record" parseRecordFromObject
